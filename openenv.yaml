@@ -1,0 +1,62 @@
+name: code-debug-env
+version: "1.0.0"
+description: >
+  Deterministic reinforcement learning environment for code debugging.
+  Agents receive buggy Python snippets and must submit fixes that satisfy
+  graded evaluation across syntax, logic, and code quality.
+tags:
+  - openenv
+  - code-debugging
+  - deterministic-evaluation
+  - curriculum
+  - reinforcement-learning
+tasks:
+  - name: easy
+    description: "Repair syntax-level defects (missing colon and indentation)."
+    difficulty: easy
+    max_steps: 6
+    expected_output: "[1,3,6] for input [1,2,3]"
+  - name: medium
+    description: "Repair logical bug in an even-counting function."
+    difficulty: medium
+    max_steps: 8
+    expected_output: "3 for input [1,2,3,4,6]"
+  - name: hard
+    description: "Repair a multi-function text preprocessing pipeline."
+    difficulty: hard
+    max_steps: 10
+    expected_output: "{'hello':2,'world':1} for 'Hello, HELLO world.'"
+action_space:
+  type: object
+  properties:
+    fixed_code:
+      type: string
+      description: "Complete corrected Python source proposed by the agent."
+observation_space:
+  type: object
+  properties:
+    buggy_code:
+      type: string
+    expected_output:
+      type: string
+    error_output:
+      type: string
+    tests_passed:
+      type: integer
+    tests_total:
+      type: integer
+    step_number:
+      type: integer
+    done:
+      type: boolean
+reward_range: [0.0, 1.0]
+reward_function:
+  syntax_component: 0.3
+  logic_component: 0.5
+  optimality_component: 0.2
+evaluation:
+  deterministic: true
+  seed: 42
+  method: "in-process Python execution + fixed evaluator functions per task"
+author: "Team Env - NIT Delhi"
+license: MIT

@@ -1,0 +1,31 @@
+# -*- coding: utf-8 -*-
+"""Graded reward for deterministic code-debugging tasks."""
+
+from __future__ import annotations
+
+from typing import Dict
+
+
+def compute_reward(scorecard: Dict[str, float], step_number: int, max_steps: int) -> float:
+    syntax = max(0.0, min(1.0, float(scorecard.get("syntax", 0.0))))
+    logic = max(0.0, min(1.0, float(scorecard.get("logic", 0.0))))
+    optimal = max(0.0, min(1.0, float(scorecard.get("optimal", 0.0))))
+
+    base = 0.3 * syntax + 0.5 * logic + 0.2 * optimal
+
+    # Efficiency bonus
+    efficiency = 0.05 * max(0.0, 1.0 - (step_number - 1) / max(1, max_steps)) if base > 0 else 0.0
+
+    # 🔥 NEW: penalty for useless steps
+    penalty = 0.0
+    if logic == 0.0:
+        penalty -= 0.1   # completely wrong logic
+    elif logic < 0.5:
+        penalty -= 0.05  # partially wrong
+
+    reward = base + efficiency + penalty
+
+    # keep in [-1, 1] but clamp final to [0,1] for scoring
+    reward = max(0.0, min(1.0, reward))
+
+    return round(reward, 4)
