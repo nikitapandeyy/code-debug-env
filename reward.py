@@ -16,16 +16,14 @@ def compute_reward(scorecard: Dict[str, float], step_number: int, max_steps: int
     # Efficiency bonus
     efficiency = 0.05 * max(0.0, 1.0 - (step_number - 1) / max(1, max_steps)) if base > 0 else 0.0
 
-    # 🔥 NEW: penalty for useless steps
+    # Penalty for useless steps
     penalty = 0.0
     if logic == 0.0:
-        penalty -= 0.1   # completely wrong logic
+        penalty -= 0.1
     elif logic < 0.5:
-        penalty -= 0.05  # partially wrong
+        penalty -= 0.05
 
     reward = base + efficiency + penalty
 
-    # keep in [-1, 1] but clamp final to [0,1] for scoring
-    reward = max(0.0, min(1.0, reward))
-
-    return round(reward, 4)
+    # Clamp STRICTLY between 0 and 1 (0.0 and 1.0 are both invalid)
+    return round(max(0.001, min(0.999, reward)), 4)
