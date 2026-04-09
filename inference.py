@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""LLM-based baseline runner for CodeDebugEnv.
-
-Uses API_BASE_URL and API_KEY from environment variables so the hackathon
-judges' LiteLLM proxy is used for all model calls.
-"""
+"""LLM-based baseline runner for CodeDebugEnv."""
 
 from __future__ import annotations
 
@@ -22,7 +18,6 @@ from code_debug_env import CodeDebugEnv
 BENCHMARK = "code-debug-env"
 TASKS = ["easy", "medium", "hard"]
 
-# --- Read from environment (injected by hackathon judges) ---
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://router.huggingface.co/v1")
 API_KEY      = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN", "")
 MODEL_NAME   = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
@@ -34,7 +29,6 @@ client = OpenAI(
 
 
 def llm_fix_code(buggy_code: str, expected_output: str, error_output: str, task_name: str) -> str:
-    """Ask the LLM to fix the buggy Python code."""
     prompt = f"""You are an expert Python debugger. Fix the following buggy Python code.
 
 Task: {task_name}
@@ -55,7 +49,6 @@ Return ONLY the fixed Python code, no explanation, no markdown fences, no preamb
         temperature=0.0,
     )
     fixed = response.choices[0].message.content.strip()
-    # Strip markdown fences if model added them anyway
     if fixed.startswith("```"):
         lines = fixed.splitlines()
         fixed = "\n".join(
@@ -86,18 +79,11 @@ def run_task(task_name: str) -> float:
                 task_name=task_name,
             )
         except Exception as exc:
-            action = state["buggy_code"]  # fallback: submit unchanged
             err_msg = str(exc).replace("\n", " ")[:120]
-            print(
-                f"[STEP] step={step} action='error' reward=0.00 "
-                f"done=true error={err_msg}"
-            )
-            print(
-                f"[END] success=false steps={step} "
-                f"score=0.00 rewards={','.join(f'{r:.2f}' for r in rewards)}"
-            )
+            print(f"[STEP] step={step} action='error' reward=0.001 done=true error={err_msg}")
+            print(f"[END] success=false steps={step} score=0.001 rewards=0.001")
             env.close()
-            return 0.0
+            return 0.001
 
         state, reward, done, info = env.step(action)
         rewards.append(float(reward))
@@ -106,13 +92,16 @@ def run_task(task_name: str) -> float:
         err = str(state.get("error_output") or "null").replace("\n", " ")[:80]
         print(
             f"[STEP] step={step} action='{action_preview}' "
-            f"reward={reward:.2f} done={str(done).lower()} error={err}"
+            f"reward={reward:.4f} done={str(done).lower()} error={err}"
         )
 
-    score = float(info.get("scorecard", {}).get("logic", 0.0)) if info else 0.0
+    raw_score = float(info.get("scorecard", {}).get("logic", 0.0)) if info else 0.0
+    score = max(0.001, min(0.999, raw_score))
+    success = raw_score >= 1.0
+
     print(
-        f"[END] success={str(score >= 1.0).lower()} steps={step} "
-        f"score={score:.2f} rewards={','.join(f'{r:.2f}' for r in rewards)}"
+        f"[END] success={str(success).lower()} steps={step} "
+        f"score={score:.4f} rewards={','.join(f'{r:.4f}' for r in rewards)}"
     )
     env.close()
     return score
@@ -120,4 +109,4 @@ def run_task(task_name: str) -> float:
 
 if __name__ == "__main__":
     all_scores = [run_task(task) for task in TASKS]
-    print(f"[SUMMARY] mean_score={sum(all_scores) / len(all_scores):.2f}")
+    print(f"[SUMMARY] mean_score={sum(all_scores) / len(all_scores):.4f}")
